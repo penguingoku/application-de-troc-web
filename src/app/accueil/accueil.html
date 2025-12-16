@@ -1,0 +1,293 @@
+<div class="accueil-container">
+  <div class="welcome-card">
+    <h1>🎉 Bienvenue sur votre espace</h1>
+
+    <div class="user-info">
+      👤 Connecté en tant que : <strong>{{ getUsername() }}</strong>
+    </div>
+
+    <div class="user-info">
+      📧 Email : <strong>{{ getEmail() }}</strong>
+    </div>
+
+    <p>Vous êtes maintenant connecté à votre compte sécurisé.</p>
+
+    <div class="navigation-links">
+      <a routerLink="/dashboard" class="nav-link">📊 Accéder au Tableau de Bord</a>
+      <a routerLink="/mes-annonces-offres" class="nav-link">📋 Mes Annonces & Offres</a>
+    </div>
+
+    <button class="add-article-btn" (click)="openAddAnnonceModal()">
+      ➕ Publier une annonce
+    </button>
+
+    <button class="logout-btn" (click)="logout()">
+      🚪 Déconnexion
+    </button>
+  </div>
+
+  <div class="error-message" *ngIf="pageError">
+    {{ pageError }}
+  </div>
+
+  <!-- Annonces Section -->
+  <div class="articles-section" *ngIf="annonces.length > 0">
+    <div class="articles-title">
+      <h2>📰 Annonces actives</h2>
+      <span *ngIf="loading">Chargement...</span>
+    </div>
+    <div class="articles-grid">
+      <div class="article-card" *ngFor="let annonce of annonces" [attr.data-annonce-id]="annonce.id">
+        <div class="article-image" *ngIf="annonce.photoProduit">
+          <img [src]="annonce.photoProduit" [alt]="annonce.nomProduit" />
+        </div>
+        <div class="article-content">
+          <h3 class="article-name">{{ annonce.nomProduit }}</h3>
+          <p class="article-description">{{ annonce.description }}</p>
+          <div class="article-meta">
+            <span class="article-author">👤 {{ annonce.user?.nomComplet || annonce.user?.username }}</span>
+            <span class="article-date">📅 {{ formatDate(annonce.dateCreation) }}</span>
+          </div>
+          <div class="article-meta">
+            <span>Type : {{ annonce.type }}</span>
+            <span>État : {{ annonce.etat }}</span>
+            <span *ngIf="annonce.valeurEstimee">Valeur estimée : {{ annonce.valeurEstimee | number:'1.0-0' }} DT</span>
+          </div>
+          <p class="article-description" *ngIf="!annonce.ouverte && annonce.produitRecherche">
+            🎯 Recherche : {{ annonce.produitRecherche }}
+          </p>
+          <div class="article-actions">
+            <button 
+              class="make-offer-btn" 
+              (click)="openOfferModal(annonce)"
+              *ngIf="!isAnnonceOwner(annonce)">
+              💼 Faire une offre
+            </button>
+            <button 
+              class="edit-article-btn" 
+              (click)="openEditAnnonceModal(annonce)"
+              *ngIf="isAnnonceOwner(annonce)">
+              ✏️ Modifier
+            </button>
+            <button 
+              class="delete-article-btn" 
+              (click)="deleteAnnonce(annonce.id)"
+              *ngIf="isAnnonceOwner(annonce)">
+              🗑️ Supprimer
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="no-articles" *ngIf="annonces.length === 0 && !loading">
+    <p>📝 Aucune annonce publiée pour le moment. Cliquez sur "Publier une annonce" pour commencer!</p>
+  </div>
+
+  <!-- Modal for Adding Annonce -->
+  <div class="modal-overlay" *ngIf="showModal" (click)="closeModal()">
+    <div class="modal-content" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h2>{{ isEditMode() ? '✏️ Modifier l\'annonce' : '➕ Ajouter une annonce' }}</h2>
+        <button class="close-btn" (click)="closeModal()">✕</button>
+      </div>
+      
+      <form (ngSubmit)="saveAnnonce()" class="article-form">
+        <div *ngIf="formError" class="error-message">
+          {{ formError }}
+        </div>
+
+        <div class="form-group">
+          <label for="articleName">Nom du produit *</label>
+          <input 
+            type="text" 
+            id="articleName" 
+            [(ngModel)]="nomProduit" 
+            name="articleName"
+            placeholder="Entrez le nom du produit"
+            required
+          />
+        </div>
+
+        <div class="form-group">
+          <label for="articleDescription">Description *</label>
+          <textarea 
+            id="articleDescription" 
+            [(ngModel)]="description" 
+            name="articleDescription"
+            placeholder="Décrivez le produit proposé"
+            rows="4"
+            required
+          ></textarea>
+        </div>
+
+        <div class="form-group">
+          <label for="type">Catégorie</label>
+          <select id="type" name="type" [(ngModel)]="type">
+            <option value="AUTRE">Autre</option>
+            <option value="ELECTRONIQUE">Électronique</option>
+            <option value="MAISON">Maison</option>
+            <option value="SPORT">Sport</option>
+            <option value="JEUX">Jeux & Loisirs</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="etat">État</label>
+          <select id="etat" name="etat" [(ngModel)]="etat">
+            <option>Neuf</option>
+            <option>Bon état</option>
+            <option>Usé</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="valeur">Valeur estimée (DT)</label>
+          <input
+            type="number"
+            id="valeur"
+            name="valeur"
+            [(ngModel)]="valeurEstimee"
+            min="0"
+            step="10"
+            placeholder="Ex: 250"
+          />
+        </div>
+
+        <div class="form-group">
+          <label>
+            <input type="checkbox" [(ngModel)]="ouverte" name="ouverte" />
+            Acceptes-tu tous types d'échanges ?
+          </label>
+        </div>
+
+        <div class="form-group" *ngIf="!ouverte">
+          <label for="produitRecherche">Produit recherché</label>
+          <input
+            type="text"
+            id="produitRecherche"
+            name="produitRecherche"
+            [(ngModel)]="produitRecherche"
+            placeholder="Décris ce que tu recherches"
+          />
+        </div>
+
+        <div class="form-group">
+          <label for="articleImage">Image (URL ou fichier)</label>
+          <input
+            type="text"
+            id="photoProduit"
+            name="photoProduit"
+            [(ngModel)]="photoProduit"
+            placeholder="https://exemple.com/mon-produit.jpg"
+          />
+          <input 
+            type="file" 
+            id="articleImage" 
+            name="articleImage"
+            accept="image/*"
+            (change)="onImageSelected($event)"
+          />
+          <div class="image-preview" *ngIf="imagePreview">
+            <img [src]="imagePreview" alt="Preview" />
+          </div>
+        </div>
+
+        <div class="modal-actions">
+          <button type="button" class="cancel-btn" (click)="closeModal()">
+            Annuler
+          </button>
+          <button type="submit" class="submit-btn">
+            {{ saving ? 'Enregistrement...' : isEditMode() ? '💾 Mettre à jour' : '✅ Publier' }}
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Offer Modal -->
+  <div class="modal-overlay" *ngIf="showOfferModal" (click)="closeOfferModal()">
+    <div class="modal-content" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h2>💼 Faire une offre</h2>
+        <button class="close-btn" (click)="closeOfferModal()">✕</button>
+      </div>
+      
+      <div class="offer-annonce-info" *ngIf="selectedAnnonceForOffer">
+        <h3>Annonce: {{ selectedAnnonceForOffer.nomProduit }}</h3>
+        <p>{{ selectedAnnonceForOffer.description }}</p>
+      </div>
+      
+      <form (ngSubmit)="submitOffer()" class="article-form">
+        <div class="form-group">
+          <label for="offerMessage">Message *</label>
+          <textarea 
+            id="offerMessage" 
+            [(ngModel)]="offerMessage" 
+            name="offerMessage"
+            placeholder="Décrivez votre offre ou le produit que vous proposez"
+            rows="4"
+            required
+          ></textarea>
+        </div>
+
+        <div class="form-group">
+          <label for="offerNomProduit">Nom du produit proposé (optionnel)</label>
+          <input 
+            type="text" 
+            id="offerNomProduit" 
+            [(ngModel)]="offerNomProduit" 
+            name="offerNomProduit"
+            placeholder="Ex: iPhone 13"
+          />
+        </div>
+
+        <div class="form-group">
+          <label for="offerEtatProduit">État du produit</label>
+          <select id="offerEtatProduit" name="offerEtatProduit" [(ngModel)]="offerEtatProduit">
+            <option>Neuf</option>
+            <option>Bon état</option>
+            <option>Usé</option>
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label for="offerValeurEstimee">Valeur estimée (DT)</label>
+          <input
+            type="number"
+            id="offerValeurEstimee"
+            name="offerValeurEstimee"
+            [(ngModel)]="offerValeurEstimee"
+            min="0"
+            step="10"
+            placeholder="Ex: 250"
+          />
+        </div>
+
+        <div class="form-group">
+          <label for="offerImage">Photo du produit (optionnel)</label>
+          <input 
+            type="file" 
+            id="offerImage" 
+            name="offerImage"
+            accept="image/*"
+            (change)="onOfferImageSelected($event)"
+          />
+          <div class="image-preview" *ngIf="offerImagePreview">
+            <img [src]="offerImagePreview" alt="Preview" />
+          </div>
+        </div>
+
+        <div class="modal-actions">
+          <button type="button" class="cancel-btn" (click)="closeOfferModal()">
+            Annuler
+          </button>
+          <button type="submit" class="submit-btn">
+            ✅ Envoyer l'offre
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+</div>

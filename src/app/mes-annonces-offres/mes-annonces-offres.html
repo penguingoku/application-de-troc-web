@@ -1,0 +1,175 @@
+<div class="container">
+  <div class="header">
+    <h1>📋 Mes Annonces et Offres</h1>
+    <div class="user-info">
+      👤 {{ getUsername() }}
+      <button class="logout-btn" (click)="logout()">🚪 Déconnexion</button>
+    </div>
+  </div>
+
+  <div class="tabs">
+    <button 
+      class="tab-btn" 
+      [class.active]="activeTab === 'annonces'"
+      (click)="switchTab('annonces')">
+      📢 Mes Annonces
+    </button>
+    <button 
+      class="tab-btn" 
+      [class.active]="activeTab === 'mes-offres'"
+      (click)="switchTab('mes-offres')">
+      💼 Mes Offres
+    </button>
+    <button 
+      class="tab-btn" 
+      [class.active]="activeTab === 'offres-recues'"
+      (click)="switchTab('offres-recues')">
+      📥 Offres Reçues
+    </button>
+  </div>
+
+  <div class="error-message" *ngIf="error">
+    {{ error }}
+  </div>
+
+  <div class="loading" *ngIf="loading">
+    Chargement...
+  </div>
+
+  <!-- Mes Annonces Tab -->
+  <div class="content" *ngIf="activeTab === 'annonces' && !loading">
+    <div class="section-header">
+      <h2>Mes Annonces ({{ mesAnnonces.length }})</h2>
+      <a routerLink="/" class="btn-primary">➕ Créer une annonce</a>
+    </div>
+
+    <div class="grid" *ngIf="mesAnnonces.length > 0">
+      <div class="card" *ngFor="let annonce of mesAnnonces">
+        <div class="card-image" *ngIf="annonce.photoProduit">
+          <img [src]="annonce.photoProduit" [alt]="annonce.nomProduit" />
+        </div>
+        <div class="card-content">
+          <h3>{{ annonce.nomProduit }}</h3>
+          <p class="description">{{ annonce.description }}</p>
+          <div class="meta">
+            <span class="badge" [class.badge-success]="annonce.valide" [class.badge-warning]="!annonce.valide">
+              {{ annonce.valide ? '✅ Validée' : '⏳ En attente' }}
+            </span>
+            <span class="badge" [class.badge-info]="annonce.actif" [class.badge-secondary]="!annonce.actif">
+              {{ annonce.actif ? 'Actif' : 'Inactif' }}
+            </span>
+          </div>
+          <div class="details">
+            <span>Type: {{ annonce.type }}</span>
+            <span>État: {{ annonce.etat }}</span>
+            <span *ngIf="annonce.valeurEstimee">Valeur: {{ annonce.valeurEstimee | number:'1.0-0' }} DT</span>
+          </div>
+          <div class="card-actions">
+            <button class="btn-secondary" (click)="navigateToAnnonce(annonce.id)">
+              👁️ Voir
+            </button>
+            <button class="btn-danger" (click)="deleteAnnonce(annonce.id)">
+              🗑️ Supprimer
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="empty-state" *ngIf="mesAnnonces.length === 0">
+      <p>📝 Vous n'avez pas encore publié d'annonce.</p>
+      <a routerLink="/" class="btn-primary">Créer votre première annonce</a>
+    </div>
+  </div>
+
+  <!-- Mes Offres Tab -->
+  <div class="content" *ngIf="activeTab === 'mes-offres' && !loading">
+    <div class="section-header">
+      <h2>Mes Offres ({{ mesOffres.length }})</h2>
+    </div>
+
+    <div class="grid" *ngIf="mesOffres.length > 0">
+      <div class="card" *ngFor="let offre of mesOffres">
+        <div class="card-content">
+          <h3>Offre sur: {{ offre.annonce?.nomProduit }}</h3>
+          <p class="description" *ngIf="offre.message">{{ offre.message }}</p>
+          <div class="meta">
+            <span class="badge" [ngClass]="getStatutBadgeClass(offre.statut)">
+              {{ getStatutLabel(offre.statut) }}
+            </span>
+          </div>
+          <div class="details">
+            <span>Annonce de: {{ offre.annonce?.user?.nomComplet || offre.annonce?.user?.username }}</span>
+            <span>Date: {{ formatDate(offre.dateCreation) }}</span>
+          </div>
+          <div class="card-actions">
+            <button class="btn-secondary" (click)="navigateToAnnonce(offre.annonce?.id || 0)">
+              👁️ Voir l'annonce
+            </button>
+            <button 
+              class="btn-danger" 
+              (click)="deleteOffre(offre.id)"
+              *ngIf="offre.statut === 'EN_ATTENTE'">
+              🗑️ Supprimer
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="empty-state" *ngIf="mesOffres.length === 0">
+      <p>💼 Vous n'avez pas encore fait d'offre.</p>
+      <a routerLink="/" class="btn-primary">Parcourir les annonces</a>
+    </div>
+  </div>
+
+  <!-- Offres Reçues Tab -->
+  <div class="content" *ngIf="activeTab === 'offres-recues' && !loading">
+    <div class="section-header">
+      <h2>Offres Reçues ({{ offresRecues.length }})</h2>
+    </div>
+
+    <div class="grid" *ngIf="offresRecues.length > 0">
+      <div class="card" *ngFor="let offre of offresRecues">
+        <div class="card-content">
+          <h3>Offre sur: {{ offre.annonce?.nomProduit }}</h3>
+          <p class="description" *ngIf="offre.message">{{ offre.message }}</p>
+          <div class="meta">
+            <span class="badge" [ngClass]="getStatutBadgeClass(offre.statut)">
+              {{ getStatutLabel(offre.statut) }}
+            </span>
+          </div>
+          <div class="details">
+            <span>De: {{ offre.user?.nomComplet || offre.user?.username }}</span>
+            <span>Date: {{ formatDate(offre.dateCreation) }}</span>
+          </div>
+          <div class="card-actions" *ngIf="offre.statut === 'EN_ATTENTE'">
+            <button class="btn-success" (click)="accepterOffre(offre.id)">
+              ✅ Accepter
+            </button>
+            <button class="btn-danger" (click)="refuserOffre(offre.id)">
+              ❌ Refuser
+            </button>
+            <button class="btn-secondary" (click)="navigateToAnnonce(offre.annonce?.id || 0)">
+              👁️ Voir l'annonce
+            </button>
+          </div>
+          <div class="card-actions" *ngIf="offre.statut !== 'EN_ATTENTE'">
+            <button class="btn-secondary" (click)="navigateToAnnonce(offre.annonce?.id || 0)">
+              👁️ Voir l'annonce
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="empty-state" *ngIf="offresRecues.length === 0">
+      <p>📥 Aucune offre reçue pour le moment.</p>
+    </div>
+  </div>
+
+  <div class="footer">
+    <a routerLink="/" class="btn-link">← Retour à l'accueil</a>
+  </div>
+</div>
+

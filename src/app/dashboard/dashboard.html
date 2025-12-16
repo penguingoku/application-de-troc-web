@@ -1,0 +1,199 @@
+<div class="dashboard-container">
+  <header class="dashboard-header">
+    <h1>Tableau de Bord</h1>
+    <button class="logout-btn" (click)="logout()">🚪 Déconnexion</button>
+  </header>
+
+  <div class="dashboard-content">
+    <div class="welcome-section">
+      <h2>Bienvenue, {{ nomComplet || username }}! 👋</h2>
+      <p>Vous êtes connecté à votre espace personnel.</p>
+    </div>
+
+    <div class="user-info-card">
+      <h3>📊 Informations du compte</h3>
+      <div class="info-grid">
+        <div class="info-item">
+          <label>Nom complet:</label>
+          <span>{{ nomComplet }}</span>
+        </div>
+        <div class="info-item">
+          <label>Nom d'utilisateur:</label>
+          <span>{{ username }}</span>
+        </div>
+        <div class="info-item">
+          <label>Email:</label>
+          <span>{{ email }}</span>
+        </div>
+        <div class="info-item">
+          <label>Dernière connexion:</label>
+          <span>{{ loginTime }}</span>
+        </div>
+        <div class="info-item">
+          <label>Rôle:</label>
+          <span class="status-active">{{ role === 'ADMIN' ? '👑 Administrateur' : '👤 Utilisateur' }}</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="quick-actions">
+      <h3>⚡ Actions rapides</h3>
+      <div class="action-buttons">
+        <button class="action-btn" (click)="navigateToHome()">🏠 Page d'accueil</button>
+        <a routerLink="/mes-annonces-offres" class="action-btn">📋 Mes Annonces & Offres</a>
+        <button class="action-btn" (click)="openProfileModal()">👤 Modifier le profil</button>
+      </div>
+    </div>
+
+    <!-- Admin Section -->
+    <div class="admin-section" *ngIf="isAdmin()">
+      <h3>👑 Administration</h3>
+      <div class="action-buttons">
+        <button class="action-btn admin-btn" (click)="openUsersModal()">
+          👥 Gérer les utilisateurs ({{ allUsers.length }})
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Profile Edit Modal -->
+  <div class="modal-overlay" *ngIf="showProfileModal" (click)="closeProfileModal()">
+    <div class="modal-content" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h2>👤 Modifier le profil</h2>
+        <button class="close-btn" (click)="closeProfileModal()">✕</button>
+      </div>
+      
+      <form (ngSubmit)="updateProfile()" class="profile-form">
+        <div *ngIf="errorMessage" class="error-message">
+          {{ errorMessage }}
+        </div>
+        
+        <div *ngIf="successMessage" class="success-message">
+          {{ successMessage }}
+        </div>
+
+        <div class="form-group">
+          <label for="editNomComplet">Nom complet *</label>
+          <input
+            type="text"
+            id="editNomComplet"
+            [(ngModel)]="editNomComplet"
+            name="editNomComplet"
+            placeholder="Entrez votre nom complet"
+            required
+          />
+        </div>
+
+        <div class="form-group">
+          <label for="editUsername">Nom d'utilisateur *</label>
+          <input 
+            type="text" 
+            id="editUsername" 
+            [(ngModel)]="editUsername" 
+            name="editUsername"
+            placeholder="Entrez votre nom d'utilisateur"
+            required
+          />
+        </div>
+
+        <div class="form-group">
+          <label for="editEmail">Email *</label>
+          <input 
+            type="email" 
+            id="editEmail" 
+            [(ngModel)]="editEmail" 
+            name="editEmail"
+            placeholder="Entrez votre email"
+            required
+          />
+        </div>
+
+        <div class="form-group">
+          <label class="checkbox-label">
+            <input 
+              type="checkbox" 
+              [(ngModel)]="changePassword" 
+              name="changePassword"
+            />
+            <span>Changer le mot de passe</span>
+          </label>
+        </div>
+
+        <div *ngIf="changePassword" class="password-section">
+          <div class="form-group">
+            <label for="newPassword">Nouveau mot de passe *</label>
+            <input 
+              type="password" 
+              id="newPassword" 
+              [(ngModel)]="newPassword" 
+              name="newPassword"
+              placeholder="Entrez le nouveau mot de passe"
+            />
+          </div>
+
+          <div class="form-group">
+            <label for="confirmPassword">Confirmer le nouveau mot de passe *</label>
+            <input 
+              type="password" 
+              id="confirmPassword" 
+              [(ngModel)]="confirmPassword" 
+              name="confirmPassword"
+              placeholder="Confirmez le nouveau mot de passe"
+            />
+          </div>
+        </div>
+
+        <div class="modal-actions">
+          <button type="button" class="cancel-btn" (click)="closeProfileModal()">
+            Annuler
+          </button>
+          <button type="submit" class="submit-btn" [disabled]="saving">
+            {{ saving ? 'Enregistrement...' : '💾 Enregistrer les modifications' }}
+          </button>
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- Users Management Modal (Admin only) -->
+  <div class="modal-overlay" *ngIf="showUsersModal" (click)="closeUsersModal()">
+    <div class="modal-content large-modal" (click)="$event.stopPropagation()">
+      <div class="modal-header">
+        <h2>👥 Gestion des utilisateurs</h2>
+        <button class="close-btn" (click)="closeUsersModal()">✕</button>
+      </div>
+      
+      <div class="users-list">
+        <div *ngIf="loadingUsers" class="loading">Chargement...</div>
+        <div *ngIf="!loadingUsers && allUsers.length === 0" class="empty-state">
+          Aucun utilisateur trouvé.
+        </div>
+        <table *ngIf="!loadingUsers && allUsers.length > 0" class="users-table">
+          <thead>
+            <tr>
+              <th>ID</th>
+              <th>Nom complet</th>
+              <th>Username</th>
+              <th>Email</th>
+              <th>Rôle</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr *ngFor="let user of allUsers">
+              <td>{{ user.id }}</td>
+              <td>{{ user.nomComplet }}</td>
+              <td>{{ user.username }}</td>
+              <td>{{ user.email }}</td>
+              <td>
+                <span [class.badge-admin]="user.role === 'ADMIN'" [class.badge-user]="user.role === 'USER'">
+                  {{ user.role === 'ADMIN' ? '👑 Admin' : '👤 User' }}
+                </span>
+              </td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+</div>
